@@ -27,8 +27,8 @@ The following tables lists the configurable parameters of the Healthz chart and 
 | `healthz.debug`               | Enable/disable debug log level                            | `true`                                        |
 | `healthz.checkinterval`       | K8S and ETCD services check interval (Go duration format) | `1m`                                          |
 | `healthz.kube.addr`           | K8S API endpoint                                          | `http://localhost:8080`                       |
-| `healthz.kube.nodesThreshold` | Lower limit of number of K8S nodes available              | `3`                                           |
-| `healthz.image.repo`          | Image repo                                                | `quay.io/gravitational/satellite`             |
+| `healthz.kube.nodesThreshold` | Lower bound of K8S nodes available                        | `3`                                           |
+| `healthz.image.repo`          | Image repository URL                                      | `quay.io/gravitational/satellite`             |
 | `healthz.image.tag`           | Image tag                                                 | `stable`                                      |
 | `healthz.image.pullPolicy`    | Image pull policy                                         | `IfNotPresent`                                |
 | `healthz.servicePort`         | External service port                                     | `8080`                                        |
