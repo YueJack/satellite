@@ -85,8 +85,7 @@ func EtcdHealth(config *ETCDConfig) (health.Checker, error) {
 // DockerHealth creates a checker that checks health of the docker daemon under
 // the specified socketPath
 func DockerHealth(socketPath string) health.Checker {
-	return NewUnixSocketHealthzChecker("docker", "http://docker/version", socketPath,
-		dockerChecker)
+	return NewDockerChecker(socketPath)
 }
 
 // SystemdHealth creates a checker that reports the status of systemd units
