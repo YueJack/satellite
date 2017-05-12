@@ -26,20 +26,14 @@ import (
 	"github.com/prometheus/procfs"
 )
 
-func NewProcessChecker(process string, tcpports []uint16, udpports []uint16, unixsockets []string) health.Checker {
+func NewProcessChecker(process string) health.Checker {
 	return &ProcessChecker{
-		Process:     process,
-		TCPPorts:    tcpports,
-		UDPPorts:    udpports,
-		UNIXSockets: unixsockets,
+		Process: process,
 	}
 }
 
 type ProcessChecker struct {
-	Process     string
-	TCPPorts    []uint16
-	UDPPorts    []uint16
-	UNIXSockets []string
+	Process string
 }
 
 func (c *ProcessChecker) Name() string {

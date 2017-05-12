@@ -48,7 +48,7 @@ const (
 	Closing                 = 0x0B
 )
 
-type TCPStat struct {
+type TCPSocket struct {
 	LocalAddress  net.TCPAddr
 	RemoteAddress net.TCPAddr
 	State         SocketState
@@ -61,7 +61,7 @@ type TCPStat struct {
 	Inode         uint
 }
 
-type UDPStat struct {
+type UDPSocket struct {
 	LocalAddress  net.UDPAddr
 	RemoteAddress net.UDPAddr
 	State         SocketState
@@ -74,7 +74,7 @@ type UDPStat struct {
 	Drops         uint
 }
 
-type UnixStat struct {
+type UnixSocket struct {
 	RefCount uint
 	Protocol uint
 	Flags    uint
@@ -84,7 +84,8 @@ type UnixStat struct {
 	Path     string
 }
 
-func ParseProcNetTCP() ([]*TCPStat, error) {
+func GetTCPSockets() ([]*TCPSocket, error) {
+	var sockets []*TCPSocket
 	fp, err := os.Open(ProcNetTCP)
 	defer fp.Close()
 	if err != nil {
@@ -92,21 +93,21 @@ func ParseProcNetTCP() ([]*TCPStat, error) {
 	}
 	lineScanner := bufio.NewScanner(fp)
 	lineScanner.Scan() // Drop header line
-	var stats []*TCPStat
 	for lineScanner.Scan() {
-		stat, err := NewTCPStatFromLine(lineScanner.Text())
+		socket, err := NewTCPSocketFromLine(lineScanner.Text())
 		if err != nil {
 			return nil, err
 		}
-		stats = append(stats, stat)
+		sockets = append(sockets, socket)
 	}
 	if err := lineScanner.Err(); err != nil {
 		return nil, trace.Wrap(err)
 	}
-	return stats, nil
+	return sockets, nil
 }
 
-func ParseProcNetUDP() ([]*UDPStat, error) {
+func GetUDPSockets() ([]*UDPSocket, error) {
+	var sockets []*UDPSocket
 	fp, err := os.Open(ProcNetUDP)
 	defer fp.Close()
 	if err != nil {
@@ -114,21 +115,21 @@ func ParseProcNetUDP() ([]*UDPStat, error) {
 	}
 	lineScanner := bufio.NewScanner(fp)
 	lineScanner.Scan() // Drop header line
-	var stats []*UDPStat
 	for lineScanner.Scan() {
-		stat, err := NewUDPStatFromLine(lineScanner.Text())
+		socket, err := NewUDPSocketFromLine(lineScanner.Text())
 		if err != nil {
 			return nil, err
 		}
-		stats = append(stats, stat)
+		sockets = append(sockets, socket)
 	}
 	if err := lineScanner.Err(); err != nil {
 		return nil, trace.Wrap(err)
 	}
-	return stats, nil
+	return sockets, nil
 }
 
-func ParseProcNetUnix() ([]*UnixStat, error) {
+func GetUnixSockets() ([]*UnixSocket, error) {
+	var sockets []*UnixSocket
 	fp, err := os.Open(ProcNetUnix)
 	defer fp.Close()
 	if err != nil {
@@ -136,21 +137,21 @@ func ParseProcNetUnix() ([]*UnixStat, error) {
 	}
 	lineScanner := bufio.NewScanner(fp)
 	lineScanner.Scan() // Drop header line
-	var stats []*UnixStat
 	for lineScanner.Scan() {
-		stat, err := NewUnixStatFromLine(lineScanner.Text())
+		socket, err := NewUnixSocketFromLine(lineScanner.Text())
 		if err != nil {
 			return nil, err
 		}
-		stats = append(stats, stat)
+		sockets = append(sockets, socket)
 	}
 	if err := lineScanner.Err(); err != nil {
 		return nil, trace.Wrap(err)
 	}
-	return stats, nil
+	return sockets, nil
+
 }
 
-func NewTCPStatFromLine(line string) (*TCPStat, error) {
+func NewTCPSocketFromLine(line string) (*TCPSocket, error) {
 	// sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
 	//  0: 00000000:0035 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 18616 1 ffff91e759d47080 100 0 0 10 0
 	// reference: https://github.com/ecki/net-tools/blob/master/netstat.c#L1070
@@ -164,20 +165,20 @@ func NewTCPStatFromLine(line string) (*TCPStat, error) {
 		timeout    int
 		tails      string
 	)
-	tcpStat := &TCPStat{}
+	tcpSocket := &TCPSocket{}
 	_, err := fmt.Sscanf(line, "%d: %X:%X %X:%X %X %X:%X %X:%X %X %d %d %d %s",
-		&sl, &localip, &tcpStat.LocalAddress.Port, &remoteip, &tcpStat.RemoteAddress.Port,
-		&tcpStat.State, &tcpStat.TXQueue, &tcpStat.RXQueue, &tr, &tmwhen, &retransmit,
-		&tcpStat.UID, &timeout, &tcpStat.Inode, &tails)
+		&sl, &localip, &tcpSocket.LocalAddress.Port, &remoteip, &tcpSocket.RemoteAddress.Port,
+		&tcpSocket.State, &tcpSocket.TXQueue, &tcpSocket.RXQueue, &tr, &tmwhen, &retransmit,
+		&tcpSocket.UID, &timeout, &tcpSocket.Inode, &tails)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	tcpStat.LocalAddress.IP = intToIPv4(localip)
-	tcpStat.RemoteAddress.IP = intToIPv4(remoteip)
-	return tcpStat, nil
+	tcpSocket.LocalAddress.IP = intToIPv4(localip)
+	tcpSocket.RemoteAddress.IP = intToIPv4(remoteip)
+	return tcpSocket, nil
 }
 
-func NewUDPStatFromLine(line string) (*UDPStat, error) {
+func NewUDPSocketFromLine(line string) (*UDPSocket, error) {
 	//    sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
 	//  2511: 00000000:14E9 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 1662497 2 ffff91e6a9fcbc00 0
 	var (
@@ -189,34 +190,34 @@ func NewUDPStatFromLine(line string) (*UDPStat, error) {
 		retransmit int
 		timeout    int
 	)
-	udpStat := &UDPStat{}
+	udpSocket := &UDPSocket{}
 	_, err := fmt.Sscanf(line, "%d: %X:%X %X:%X %X %X:%X %X:%X %X %d %d %d %d %X %d",
-		&sl, &localip, &udpStat.LocalAddress.Port, &remoteip, &udpStat.RemoteAddress.Port,
-		&udpStat.State, &udpStat.TXQueue, &udpStat.RXQueue, &tr, &tmwhen, &retransmit,
-		&udpStat.UID, &timeout, &udpStat.Inode, &udpStat.RefCount, &udpStat.Pointer,
-		&udpStat.Drops)
+		&sl, &localip, &udpSocket.LocalAddress.Port, &remoteip, &udpSocket.RemoteAddress.Port,
+		&udpSocket.State, &udpSocket.TXQueue, &udpSocket.RXQueue, &tr, &tmwhen, &retransmit,
+		&udpSocket.UID, &timeout, &udpSocket.Inode, &udpSocket.RefCount, &udpSocket.Pointer,
+		&udpSocket.Drops)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	udpStat.LocalAddress.IP = intToIPv4(localip)
-	udpStat.RemoteAddress.IP = intToIPv4(remoteip)
-	return udpStat, nil
+	udpSocket.LocalAddress.IP = intToIPv4(localip)
+	udpSocket.RemoteAddress.IP = intToIPv4(remoteip)
+	return udpSocket, nil
 }
 
-func NewUnixStatFromLine(line string) (*UnixStat, error) {
+func NewUnixSocketFromLine(line string) (*UnixSocket, error) {
 	// Num               RefCount Protocol Flags    Type St Inode Path
 	// ffff91e759dfb800: 00000002 00000000 00010000 0001 01 16163 /tmp/sddm-auth3949710e-7c3f-4aa2-b5fc-25cc34a7f31e
 	var (
 		pointer uintptr
 	)
-	unixStat := &UnixStat{}
+	unixSocket := &UnixSocket{}
 	n, err := fmt.Sscanf(line, "%X: %X %X %X %X %X %d %s",
-		&pointer, &unixStat.RefCount, &unixStat.Protocol, &unixStat.Flags,
-		&unixStat.Type, &unixStat.State, &unixStat.Inode, &unixStat.Path)
+		&pointer, &unixSocket.RefCount, &unixSocket.Protocol, &unixSocket.Flags,
+		&unixSocket.Type, &unixSocket.State, &unixSocket.Inode, &unixSocket.Path)
 	if err != nil && n < 7 {
 		return nil, trace.Wrap(err)
 	}
-	return unixStat, nil
+	return unixSocket, nil
 }
 
 func intToIPv4(n uint32) net.IP {
